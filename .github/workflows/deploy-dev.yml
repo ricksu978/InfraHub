@@ -1,0 +1,17 @@
+name: Build And Deploy Dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-dev:
+    uses: ./.github/workflows/template-cd.yml
+    with:
+      environment_name: dev
+      project_name: usergroup
+      sql_admin_login: sqladmin
+    secrets:
+      SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}

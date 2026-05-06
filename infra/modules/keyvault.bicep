@@ -1,7 +1,7 @@
 @description('Name of the Key Vault. Must be globally unique, 3-24 chars, alphanumerics and hyphens.')
 @minLength(3)
 @maxLength(24)
-param name string
+param keyVaultName string
 
 @description('Azure region for the Key Vault.')
 param location string = resourceGroup().location
@@ -23,7 +23,7 @@ param skuName string = 'standard'
 param secretsUserPrincipalIds array = []
 
 resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
-  name: name
+  name: keyVaultName
   location: location
   tags: tags
   properties: {

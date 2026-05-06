@@ -1,7 +1,7 @@
 @description('A short name used to derive resource names. Letters and numbers only, 2-10 chars.')
 @minLength(2)
 @maxLength(10)
-param workloadName string = 'sswdemo'
+param project string = 'usergroup'
 
 @description('Environment name, e.g. dev, test, prod. Used in resource naming and tags.')
 @allowed([
@@ -21,39 +21,54 @@ param sqlAdministratorLogin string
 @secure()
 param sqlAdministratorLoginPassword string
 
-// ---------- Naming ----------
-// A short, deterministic suffix keeps globally-unique names (Web App, Key Vault, SQL server) stable per resource group.
-var uniqueSuffix = uniqueString(resourceGroup().id, workloadName, environmentName)
-var namePrefix = toLower('${workloadName}-${environmentName}')
+// A short, deterministic suffix keeps globally-unique names stable per resource group.
+var uniqueSuffix = uniqueString(resourceGroup().id, project, environmentName)
+var nameSuffix = toLower('${project}-${environmentName}')
 
-var apiAppName = '${namePrefix}-api-${uniqueSuffix}'
-var apiPlanName = '${namePrefix}-plan'
-// Key Vault names are 3-24 chars, alphanumerics and hyphens only.
-var keyVaultName = take(replace('${namePrefix}-kv-${uniqueSuffix}', '--', '-'), 24)
-// SQL server names must be lowercase, 1-63 chars, alphanumerics and hyphens, cannot start/end with hyphen.
-var sqlServerName = '${namePrefix}-sql-${uniqueSuffix}'
-var sqlDatabaseName = '${workloadName}db'
+// Naming follows the Microsoft Cloud Adoption Framework resource abbreviations:
+// https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
+// App Service plan = asp, Web app = app, Key Vault = kv, Azure SQL server = sql, Azure SQL database = sqldb.
+// Group all derived resource names together so the naming convention is easy to explain.
+var resourceNames = {
+  webApp: 'app-${nameSuffix}-${uniqueSuffix}'
+  appServicePlan: 'asp-${nameSuffix}'
+
+  // Key Vault names are 3-24 chars, alphanumerics and hyphens only.
+  keyVault: take(replace('kv-${nameSuffix}-${uniqueSuffix}', '--', '-'), 24)
+
+  // SQL server names must be lowercase, 1-63 chars, alphanumerics and hyphens, cannot start/end with hyphen.
+  sqlServer: 'sql-${nameSuffix}-${uniqueSuffix}'
+  sqlDatabase: 'sqldb-${nameSuffix}'
+}
 
 // Key Vault URI follows a deterministic pattern. Computing it here (instead of consuming
 // keyVault.outputs.uri) lets us pass the URI to the API module without creating a cycle
 // between the API and Key Vault modules.
-var keyVaultUri = 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/'
+var keyVaultUri = 'https://${resourceNames.keyVault}${environment().suffixes.keyvaultDns}/'
 
-var commonTags = {
-  workload: workloadName
+var resourceTags = {
+  project: project
   environment: environmentName
   'managed-by': 'bicep'
-  demo: 'ssw-2026-may-user-group'
+}
+
+// Keep application configuration in one place so it is easier to map template values
+// to the app settings visible in App Service.
+var apiAppSettings = {
+  ASPNETCORE_ENVIRONMENT: environmentName == 'prod' ? 'Production' : 'Development'
+  WEBSITE_RUN_FROM_PACKAGE: '1'
+  // Resolved at runtime from Key Vault using the App Service managed identity.
+  ConnectionStrings__DefaultConnection: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/SqlConnectionString)'
+  KeyVault__Uri: keyVaultUri
 }
 
 // ---------- Database ----------
 module database 'modules/database.bicep' = {
-  name: 'database'
   params: {
-    sqlServerName: sqlServerName
-    databaseName: sqlDatabaseName
+    sqlServerName: resourceNames.sqlServer
+    databaseName: resourceNames.sqlDatabase
     location: location
-    tags: commonTags
+    tags: resourceTags
     administratorLogin: sqlAdministratorLogin
     administratorLoginPassword: sqlAdministratorLoginPassword
   }
@@ -64,31 +79,23 @@ module database 'modules/database.bicep' = {
 // managed identity exists and can be granted access to Key Vault. The connection string is then
 // surfaced via Key Vault references on the app settings of the deployed app.
 module api 'modules/api.bicep' = {
-  name: 'api'
   params: {
-    appServicePlanName: apiPlanName
-    webAppName: apiAppName
+    appServicePlanName: resourceNames.appServicePlan
+    webAppName: resourceNames.webApp
     location: location
-    tags: commonTags
-    appSettings: {
-      ASPNETCORE_ENVIRONMENT: environmentName == 'prod' ? 'Production' : 'Development'
-      WEBSITE_RUN_FROM_PACKAGE: '1'
-      // Resolved at runtime from Key Vault using the App Service managed identity.
-      ConnectionStrings__DefaultConnection: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/SqlConnectionString)'
-      KeyVault__Uri: keyVaultUri
-    }
+    tags: resourceTags
+    appSettings: apiAppSettings
   }
 }
 
 // ---------- Key Vault ----------
 // Grants the API's managed identity the "Key Vault Secrets User" role so it can read secrets.
 module keyVault 'modules/keyvault.bicep' = {
-  name: 'keyVault'
   params: {
     #disable-next-line BCP334
-    name: keyVaultName
+    keyVaultName: resourceNames.keyVault
     location: location
-    tags: commonTags
+    tags: resourceTags
     secretsUserPrincipalIds: [
       api.outputs.webAppPrincipalId
     ]

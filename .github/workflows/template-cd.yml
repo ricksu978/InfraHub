@@ -1,0 +1,75 @@
+name: Template CD
+
+on:
+  workflow_call:
+    inputs:
+      environment_name:
+        required: true
+        type: string
+      project_name:
+        required: true
+        type: string
+      sql_admin_login:
+        required: true
+        type: string
+    secrets:
+      SQL_ADMIN_PASSWORD:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision infrastructure
+        id: infra
+        shell: pwsh
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          $deploymentName = "${{ inputs.environment_name }}-${env:GITHUB_RUN_NUMBER}-${env:GITHUB_RUN_ATTEMPT}"
+
+          $deployment = ./infra/scripts/deploy.ps1 `
+            -ResourceGroupName $env:AZURE_RESOURCE_GROUP `
+            -DeploymentName $deploymentName `
+            -TemplateFile ./infra/main.bicep `
+            -ParameterFile ./infra/main.bicepparam `
+            -ProjectName '${{ inputs.project_name }}' `
+            -EnvironmentName '${{ inputs.environment_name }}' `
+            -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' `
+            -SqlAdministratorLoginPassword $env:SQL_ADMIN_PASSWORD | ConvertFrom-Json -Depth 100
+
+          "keyvault_name=$($deployment.keyVaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sql_server_fqdn=$($deployment.sqlServerFqdn)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sql_database_name=$($deployment.sqlDatabaseName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Seed Key Vault connection string
+        shell: bash
+        env:
+          KEYVAULT_NAME: ${{ steps.infra.outputs.keyvault_name }}
+          SQL_SERVER_FQDN: ${{ steps.infra.outputs.sql_server_fqdn }}
+          SQL_DATABASE_NAME: ${{ steps.infra.outputs.sql_database_name }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          connection_string="Server=tcp:${SQL_SERVER_FQDN},1433;Initial Catalog=${SQL_DATABASE_NAME};Persist Security Info=False;User ID=${{ inputs.sql_admin_login }};Password=${SQL_ADMIN_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+
+          az keyvault secret set \
+            --vault-name "$KEYVAULT_NAME" \
+            --name SqlConnectionString \
+            --value "$connection_string"

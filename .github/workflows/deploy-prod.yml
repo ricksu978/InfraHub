@@ -1,0 +1,14 @@
+name: Deploy Prod
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    uses: ./.github/workflows/template-cd.yml
+    with:
+      environment_name: prod
+      project_name: usergroup
+      sql_admin_login: sqladmin
+    secrets:
+      SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}

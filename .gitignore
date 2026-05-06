@@ -318,6 +318,9 @@ node_modules/
 **/*.DesktopClient/GeneratedArtifacts
 **/*.DesktopClient/ModelManifest.xml
 **/*.Server/GeneratedArtifacts
+
+# Bicep build outputs
+infra/main.json
 **/*.Server/ModelManifest.xml
 _Pvt_Extensions
 
