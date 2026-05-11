@@ -1,12 +1,12 @@
-@description('A short name used to derive resource names. Letters and numbers only, 2-10 chars.')
+@description('A short name used to derive resource names. Letters and numbers only, 2-15 chars.')
 @minLength(2)
-@maxLength(10)
-param project string = 'usergroup'
+@maxLength(15)
+param project string = 'iac-bicep-demo'
 
-@description('Environment name, e.g. dev, test, prod. Used in resource naming and tags.')
+@description('Environment name, e.g. dev, uat, prod. Used in resource naming and tags.')
 @allowed([
   'dev'
-  'test'
+  'uat'
   'prod'
 ])
 param environmentName string = 'dev'
@@ -21,8 +21,6 @@ param sqlAdministratorLogin string
 @secure()
 param sqlAdministratorLoginPassword string
 
-// A short, deterministic suffix keeps globally-unique names stable per resource group.
-var uniqueSuffix = uniqueString(resourceGroup().id, project, environmentName)
 var nameSuffix = toLower('${project}-${environmentName}')
 
 // Naming follows the Microsoft Cloud Adoption Framework resource abbreviations:
@@ -30,14 +28,10 @@ var nameSuffix = toLower('${project}-${environmentName}')
 // App Service plan = asp, Web app = app, Key Vault = kv, Azure SQL server = sql, Azure SQL database = sqldb.
 // Group all derived resource names together so the naming convention is easy to explain.
 var resourceNames = {
-  webApp: 'app-${nameSuffix}-${uniqueSuffix}'
+  webApp: 'app-${nameSuffix}'
   appServicePlan: 'asp-${nameSuffix}'
-
-  // Key Vault names are 3-24 chars, alphanumerics and hyphens only.
-  keyVault: take(replace('kv-${nameSuffix}-${uniqueSuffix}', '--', '-'), 24)
-
-  // SQL server names must be lowercase, 1-63 chars, alphanumerics and hyphens, cannot start/end with hyphen.
-  sqlServer: 'sql-${nameSuffix}-${uniqueSuffix}'
+  keyVault: 'kv-${nameSuffix}'
+  sqlServer: 'sql-${nameSuffix}'
   sqlDatabase: 'sqldb-${nameSuffix}'
 }
 
@@ -46,24 +40,17 @@ var resourceNames = {
 // between the API and Key Vault modules.
 var keyVaultUri = 'https://${resourceNames.keyVault}${environment().suffixes.keyvaultDns}/'
 
-var resourceTags = {
-  project: project
-  environment: environmentName
-  'managed-by': 'bicep'
-}
+var resourceTags = {}
+// {
+//   project: project
+//   environment: environmentName
+//   'managed-by': 'bicep'
+// }
 
-// Keep application configuration in one place so it is easier to map template values
-// to the app settings visible in App Service.
-var apiAppSettings = {
-  ASPNETCORE_ENVIRONMENT: environmentName == 'prod' ? 'Production' : 'Development'
-  WEBSITE_RUN_FROM_PACKAGE: '1'
-  // Resolved at runtime from Key Vault using the App Service managed identity.
-  ConnectionStrings__DefaultConnection: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/SqlConnectionString)'
-  KeyVault__Uri: keyVaultUri
-}
 
 // ---------- Database ----------
 module database 'modules/database.bicep' = {
+  name: 'database-deployment'
   params: {
     sqlServerName: resourceNames.sqlServer
     databaseName: resourceNames.sqlDatabase
@@ -75,24 +62,26 @@ module database 'modules/database.bicep' = {
 }
 
 // ---------- API (App Service) ----------
-// The App Service is created first (without the Key Vault reference) so that the system-assigned
-// managed identity exists and can be granted access to Key Vault. The connection string is then
-// surfaced via Key Vault references on the app settings of the deployed app.
 module api 'modules/api.bicep' = {
+  name: 'api-deployment'
   params: {
     appServicePlanName: resourceNames.appServicePlan
     webAppName: resourceNames.webApp
     location: location
     tags: resourceTags
-    appSettings: apiAppSettings
+    appSettings: {
+      ASPNETCORE_ENVIRONMENT: environmentName == 'prod' ? 'Production' : 'Development'
+      ConnectionStrings__DefaultConnection: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/SqlConnectionString)'
+      KeyVault__Uri: keyVaultUri
+    }
   }
 }
 
 // ---------- Key Vault ----------
 // Grants the API's managed identity the "Key Vault Secrets User" role so it can read secrets.
 module keyVault 'modules/keyvault.bicep' = {
+  name: 'keyvault-deployment'
   params: {
-    #disable-next-line BCP334
     keyVaultName: resourceNames.keyVault
     location: location
     tags: resourceTags

@@ -8,7 +8,7 @@ jobs:
     uses: ./.github/workflows/template-cd.yml
     with:
       environment_name: prod
-      project_name: usergroup
+      project_name: iac-bicep-demo
       sql_admin_login: sqladmin
     secrets:
       SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}

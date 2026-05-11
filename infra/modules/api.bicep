@@ -46,8 +46,6 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
     siteConfig: {
       linuxFxVersion: linuxFxVersion
       alwaysOn: false
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
       http20Enabled: true
       appSettings: [for setting in items(appSettings): {
         name: setting.key

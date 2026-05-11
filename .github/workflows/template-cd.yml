@@ -49,7 +49,7 @@ jobs:
             -ResourceGroupName $env:AZURE_RESOURCE_GROUP `
             -DeploymentName $deploymentName `
             -TemplateFile ./infra/main.bicep `
-            -ParameterFile ./infra/main.bicepparam `
+            -ParameterFile './infra/main.${{ inputs.environment_name }}.bicepparam' `
             -ProjectName '${{ inputs.project_name }}' `
             -EnvironmentName '${{ inputs.environment_name }}' `
             -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' `
