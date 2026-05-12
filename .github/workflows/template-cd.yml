@@ -23,7 +23,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment_name }}
+    environment:
+      name: ${{ inputs.environment_name }}
+      url: ${{ steps.infra.outputs.api_url }}
 
     steps:
       - name: Checkout
@@ -55,6 +57,7 @@ jobs:
             -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' `
             -SqlAdministratorLoginPassword $env:SQL_ADMIN_PASSWORD | ConvertFrom-Json -Depth 100
 
+          "api_url=https://$($deployment.apiHostName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "keyvault_name=$($deployment.keyVaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_server_fqdn=$($deployment.sqlServerFqdn)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_database_name=$($deployment.sqlDatabaseName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
