@@ -1,10 +1,9 @@
 using './main.bicep'
 
- param project = 'iac-bicep-demo'
+param project = 'iac-bicep-demo'
 param environmentName = 'prod'
-param sqlAdministratorLogin = 'sqladmin'
-param sqlAdministratorLoginPassword = readEnvironmentVariable('SQL_ADMIN_PASSWORD', 'DemoOnly-ReplaceMe-123!')
-
-// Example:
-// $env:SQL_ADMIN_PASSWORD = '<strong-password>'
-// az deployment group create --resource-group <rg> --template-file infra/main.bicep --parameters infra/main.bicepparam
+param sqlAdministratorLogin = 'sqladmin-prod'
+param sqlAdministratorLoginPassword = readEnvironmentVariable(
+  'SQL_ADMIN_PASSWORD',
+  'DemoOnly-ReplaceMe-123!'
+)
