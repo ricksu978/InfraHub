@@ -12,18 +12,56 @@ on:
       sql_admin_login:
         required: true
         type: string
+    secrets:
+      SQL_ADMIN_PASSWORD:
+        required: true
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  deploy:
+  what-if:
+    name: What-If
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run Bicep What-If
+        shell: pwsh
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          $deploymentName = "github-${{ inputs.environment_name }}-${env:GITHUB_RUN_NUMBER}-${env:GITHUB_RUN_ATTEMPT}"
+
+          ./infra/scripts/deploy.ps1 `
+            -ResourceGroupName $env:AZURE_RESOURCE_GROUP `
+            -DeploymentName $deploymentName `
+            -TemplateFile ./infra/main.bicep `
+            -ParameterFile './infra/main.${{ inputs.environment_name }}.bicepparam' `
+            -ProjectName '${{ inputs.project_name }}' `
+            -EnvironmentName '${{ inputs.environment_name }}' `
+            -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' `
+            -WhatIf
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: what-if
 
     environment:
       name: ${{ inputs.environment_name }}
-      url: ${{ steps.infra.outputs.web_app_url }}
+      url: ${{ steps.infra.outputs.api_url }}
 
     steps:
       - name: Checkout
@@ -40,19 +78,21 @@ jobs:
         id: infra
         shell: pwsh
         env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
         run: |
-          /infra/scripts/deploy.ps1 `
-            -ResourceGroupName "${{ vars.AZURE_RESOURCE_GROUP }}" `
-            -DeploymentName "github-${{ inputs.environment_name }}-${{ github.run_number }}" `
-            -TemplateFile "./infra/main.bicep" `
-            -ParameterFile "./infra/main.${{ inputs.environment_name }}.bicepparam" `
-            -ProjectName "${{ inputs.project_name }}" `
-            -EnvironmentName "${{ inputs.environment_name }}" `
-            -Location "${{ vars.AZURE_LOCATION }}" `
-            -SqlAdministratorLogin "${{ inputs.sql_admin_login }}"
+          $deploymentName = "github-${{ inputs.environment_name }}-${env:GITHUB_RUN_NUMBER}-${env:GITHUB_RUN_ATTEMPT}"
 
-          "web_app_url=$($deployment.webAppUrl)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $deployment = ./infra/scripts/deploy.ps1 `
+            -ResourceGroupName $env:AZURE_RESOURCE_GROUP `
+            -DeploymentName $deploymentName `
+            -TemplateFile ./infra/main.bicep `
+            -ParameterFile './infra/main.${{ inputs.environment_name }}.bicepparam' `
+            -ProjectName '${{ inputs.project_name }}' `
+            -EnvironmentName '${{ inputs.environment_name }}' `
+            -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' | ConvertFrom-Json -Depth 100
+
+          "api_url=https://$($deployment.apiHostName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "keyvault_name=$($deployment.keyVaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "sql_server_name=$($deployment.sqlServerName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sql_server_fqdn=$($deployment.sqlServerFqdn)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_database_name=$($deployment.sqlDatabaseName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8

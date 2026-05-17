@@ -19,9 +19,6 @@ param(
     [string]$EnvironmentName,
 
     [Parameter(Mandatory = $true)]
-    [string]$Location,
-
-    [Parameter(Mandatory = $true)]
     [string]$SqlAdministratorLogin,
 
     [switch]$WhatIf
@@ -37,7 +34,6 @@ if ([string]::IsNullOrWhiteSpace($env:SQL_ADMIN_PASSWORD)) {
 # Values consumed by .bicepparam via readEnvironmentVariable()
 $env:PROJECT_NAME = $ProjectName
 $env:ENVIRONMENT_NAME = $EnvironmentName
-$env:AZURE_LOCATION = $Location
 $env:SQL_ADMIN_LOGIN = $SqlAdministratorLogin
 
 if ($WhatIf) {
@@ -59,8 +55,8 @@ $deploymentResult = az deployment group create `
 $outputs = $deploymentResult.properties.outputs
 
 [pscustomobject]@{
-    webAppUrl       = $outputs.webAppUrl.value
+    apiHostName     = $outputs.apiHostName.value
     keyVaultName    = $outputs.keyVaultName.value
-    sqlServerName   = $outputs.sqlServerName.value
+    sqlServerFqdn   = $outputs.sqlServerFqdn.value
     sqlDatabaseName = $outputs.sqlDatabaseName.value
 } | ConvertTo-Json -Depth 10
