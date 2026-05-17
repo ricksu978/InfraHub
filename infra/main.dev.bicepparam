@@ -1,9 +1,7 @@
 using './main.bicep'
 
-param project = 'iac-bicep-demo'
+param projectName = 'iacdemo'
 param environmentName = 'dev'
-param sqlAdministratorLogin = 'sqladmin-dev'
-param sqlAdministratorLoginPassword = readEnvironmentVariable(
-  'SQL_ADMIN_PASSWORD',
-  'DemoOnly-ReplaceMe-123!'
-)
+param location = 'australiaeast'
+param sqlAdminLogin = 'sqladminuser'
+param sqlAdminPassword = readEnvironmentVariable('SQL_ADMIN_PASSWORD')

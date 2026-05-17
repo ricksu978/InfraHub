@@ -12,9 +12,6 @@ on:
       sql_admin_login:
         required: true
         type: string
-    secrets:
-      SQL_ADMIN_PASSWORD:
-        required: true
 
 permissions:
   id-token: write
@@ -23,9 +20,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     environment:
       name: ${{ inputs.environment_name }}
-      url: ${{ steps.infra.outputs.api_url }}
+      url: ${{ steps.infra.outputs.web_app_url }}
 
     steps:
       - name: Checkout
@@ -42,37 +40,19 @@ jobs:
         id: infra
         shell: pwsh
         env:
-          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
         run: |
-          $deploymentName = "github-${{ inputs.environment_name }}-${env:GITHUB_RUN_NUMBER}-${env:GITHUB_RUN_ATTEMPT}"
+          /infra/scripts/deploy.ps1 `
+            -ResourceGroupName "${{ vars.AZURE_RESOURCE_GROUP }}" `
+            -DeploymentName "github-${{ inputs.environment_name }}-${{ github.run_number }}" `
+            -TemplateFile "./infra/main.bicep" `
+            -ParameterFile "./infra/main.${{ inputs.environment_name }}.bicepparam" `
+            -ProjectName "${{ inputs.project_name }}" `
+            -EnvironmentName "${{ inputs.environment_name }}" `
+            -Location "${{ vars.AZURE_LOCATION }}" `
+            -SqlAdministratorLogin "${{ inputs.sql_admin_login }}"
 
-          $deployment = ./infra/scripts/deploy.ps1 `
-            -ResourceGroupName $env:AZURE_RESOURCE_GROUP `
-            -DeploymentName $deploymentName `
-            -TemplateFile ./infra/main.bicep `
-            -ParameterFile './infra/main.${{ inputs.environment_name }}.bicepparam' `
-            -ProjectName '${{ inputs.project_name }}' `
-            -EnvironmentName '${{ inputs.environment_name }}' `
-            -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' `
-            -SqlAdministratorLoginPassword $env:SQL_ADMIN_PASSWORD | ConvertFrom-Json -Depth 100
-
-          "api_url=https://$($deployment.apiHostName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "web_app_url=$($deployment.webAppUrl)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "keyvault_name=$($deployment.keyVaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "sql_server_fqdn=$($deployment.sqlServerFqdn)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sql_server_name=$($deployment.sqlServerName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_database_name=$($deployment.sqlDatabaseName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
-      - name: Seed Key Vault connection string
-        shell: bash
-        env:
-          KEYVAULT_NAME: ${{ steps.infra.outputs.keyvault_name }}
-          SQL_SERVER_FQDN: ${{ steps.infra.outputs.sql_server_fqdn }}
-          SQL_DATABASE_NAME: ${{ steps.infra.outputs.sql_database_name }}
-          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
-        run: |
-          connection_string="Server=tcp:${SQL_SERVER_FQDN},1433;Initial Catalog=${SQL_DATABASE_NAME};Persist Security Info=False;User ID=${{ inputs.sql_admin_login }};Password=${SQL_ADMIN_PASSWORD};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-
-          az keyvault secret set \
-            --vault-name "$KEYVAULT_NAME" \
-            --name SqlConnectionString \
-            --value "$connection_string"

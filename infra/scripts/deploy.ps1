@@ -19,27 +19,48 @@ param(
     [string]$EnvironmentName,
 
     [Parameter(Mandatory = $true)]
-    [string]$SqlAdministratorLogin,
+    [string]$Location,
 
     [Parameter(Mandatory = $true)]
-    [string]$SqlAdministratorLoginPassword
+    [string]$SqlAdministratorLogin,
+
+    [switch]$WhatIf
 )
 
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+
+if ([string]::IsNullOrWhiteSpace($env:SQL_ADMIN_PASSWORD)) {
+    throw "Environment variable SQL_ADMIN_PASSWORD is required."
+}
+
+# Values consumed by .bicepparam via readEnvironmentVariable()
+$env:PROJECT_NAME = $ProjectName
+$env:ENVIRONMENT_NAME = $EnvironmentName
+$env:AZURE_LOCATION = $Location
+$env:SQL_ADMIN_LOGIN = $SqlAdministratorLogin
+
+if ($WhatIf) {
+    az deployment group what-if `
+        --resource-group $ResourceGroupName `
+        --template-file $TemplateFile `
+        --parameters $ParameterFile
+
+    return
+}
 
 $deploymentResult = az deployment group create `
     --resource-group $ResourceGroupName `
     --name $DeploymentName `
     --template-file $TemplateFile `
     --parameters $ParameterFile `
-    --parameters project=$ProjectName environmentName=$EnvironmentName sqlAdministratorLogin=$SqlAdministratorLogin sqlAdministratorLoginPassword=$SqlAdministratorLoginPassword `
     --output json | ConvertFrom-Json -Depth 100
 
 $outputs = $deploymentResult.properties.outputs
 
 [pscustomobject]@{
-    apiHostName = $outputs.apiHostName.value
-    keyVaultName = $outputs.keyVaultName.value
-    sqlServerFqdn = $outputs.sqlServerFqdn.value
+    webAppUrl       = $outputs.webAppUrl.value
+    keyVaultName    = $outputs.keyVaultName.value
+    sqlServerName   = $outputs.sqlServerName.value
     sqlDatabaseName = $outputs.sqlDatabaseName.value
 } | ConvertTo-Json -Depth 10
