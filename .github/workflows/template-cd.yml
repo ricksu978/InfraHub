@@ -24,6 +24,9 @@ jobs:
   what-if:
     name: What-If
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment_name }}
+      deployment: false
 
     steps:
       - name: Checkout
