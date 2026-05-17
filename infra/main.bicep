@@ -29,7 +29,7 @@ module database './modules/database.bicep' = {
   }
 }
 
-module keyVault './modules/keyVault.bicep' = {
+module keyVault './modules/keyvault.bicep' = {
   name: 'keyVault'
   params: {
     nameSuffix: nameSuffix
