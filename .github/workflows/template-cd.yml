@@ -25,7 +25,7 @@ jobs:
     name: What-If
     runs-on: ubuntu-latest
     environment:
-      name: ${{ inputs.environment_name }}
+      name: ${{ inputs.environment_name }}-ci
       deployment: false
 
     steps:
