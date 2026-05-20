@@ -55,7 +55,7 @@ $deploymentResult = az deployment group create `
 $outputs = $deploymentResult.properties.outputs
 
 [pscustomobject]@{
-    apiHostName     = $outputs.apiHostName.value
+    webAppUrl       = $outputs.webAppUrl.value
     keyVaultName    = $outputs.keyVaultName.value
     sqlServerFqdn   = $outputs.sqlServerFqdn.value
     sqlDatabaseName = $outputs.sqlDatabaseName.value
