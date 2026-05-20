@@ -97,7 +97,7 @@ jobs:
 
           $deployment | ConvertTo-Json -Depth 100
 
-          "web_app_url=https://$($deployment.webAppUrl)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "web_app_url=$($deployment.webAppUrl)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "keyvault_name=$($deployment.keyVaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_server_fqdn=$($deployment.sqlServerFqdn)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_database_name=$($deployment.sqlDatabaseName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
