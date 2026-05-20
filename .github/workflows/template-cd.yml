@@ -64,7 +64,7 @@ jobs:
 
     environment:
       name: ${{ inputs.environment_name }}
-      url: ${{ steps.infra.outputs.api_url }}
+      url: ${{ steps.infra.outputs.web_app_url }}
 
     steps:
       - name: Checkout
@@ -95,7 +95,7 @@ jobs:
             -EnvironmentName '${{ inputs.environment_name }}' `
             -SqlAdministratorLogin '${{ inputs.sql_admin_login }}' | ConvertFrom-Json -Depth 100
 
-          "api_url=https://$($deployment.apiHostName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "web_app_url=https://$($deployment.webAppUrl)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "keyvault_name=$($deployment.keyVaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_server_fqdn=$($deployment.sqlServerFqdn)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sql_database_name=$($deployment.sqlDatabaseName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
