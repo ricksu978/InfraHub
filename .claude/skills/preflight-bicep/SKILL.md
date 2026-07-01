@@ -13,7 +13,7 @@ First read `config.json` from the create-bicep skill (`.claude/skills/create-bic
 
 Identify the target before running anything:
 
-- **Template**: the `main.bicep` (or module) to check. Default to `infra-ai/main.bicep` if present.
+- **Template**: the `main.bicep` (or module) to check. Default to `ai-infra/main.bicep` if present.
 - **Environment / parameter file**: the `.bicepparam` to check, e.g. `main.<env>.bicepparam`. If more than one environment exists, ask which to check or run the checks for each.
 - **Scope**: the resource group and current subscription for validate and what-if. Derive a default from convention (`rg-<projectName>-<env>`) but confirm with the user before using it.
 - **Secrets**: `.bicepparam` files may read secrets from env vars (e.g. `readEnvironmentVariable('SQL_ADMIN_PASSWORD')`). Confirm required env vars are set before validate/what-if; do not invent values.

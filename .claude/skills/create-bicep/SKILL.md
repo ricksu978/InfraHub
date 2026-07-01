@@ -34,7 +34,7 @@ Generate concise Bicep. Do not add `@description` to every parameter, property, 
 
 ## Placement
 
-Create AI-generated infrastructure in a separate `infra-ai/` folder unless the user specifies another. Do not edit the existing `infra/` folder unless explicitly asked.
+Create AI-generated infrastructure in the `ai-infra/` folder. Treat this as the required output folder for generated Bicep files unless the user explicitly names a different path. Do not create or use `infra-ai/`. Do not edit the existing `infra/` folder unless explicitly asked.
 
 ## After generating
 
