@@ -7,6 +7,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: deploy-prod-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy-prod:
     uses: ./.github/workflows/template-cd.yml
