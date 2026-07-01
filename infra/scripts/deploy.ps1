@@ -37,10 +37,12 @@ $env:ENVIRONMENT_NAME = $EnvironmentName
 $env:SQL_ADMIN_LOGIN = $SqlAdministratorLogin
 
 if ($WhatIf) {
+    # ponytail: --debug surfaces the real error masked by the azure-cli "content already consumed" bug; remove once fixed
     az deployment group what-if `
         --resource-group $ResourceGroupName `
         --template-file $TemplateFile `
-        --parameters $ParameterFile
+        --parameters $ParameterFile `
+        --debug
 
     return
 }
@@ -50,7 +52,7 @@ $deploymentResult = az deployment group create `
     --name $DeploymentName `
     --template-file $TemplateFile `
     --parameters $ParameterFile `
-    --output json | ConvertFrom-Json -Depth 100
+    --output json --debug | ConvertFrom-Json -Depth 100
 
 $outputs = $deploymentResult.properties.outputs
 

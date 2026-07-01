@@ -1,4 +1,5 @@
-// infra/main.bicep
+// main.bicep
+
 
 // Parameters
 param projectName string = 'infrahub'
@@ -11,7 +12,7 @@ param sqlAdminPassword string
 // Variables
 var nameSuffix = toLower('${projectName}-${environmentName}')
 
-module hosting 'modules/hosting.bicep' = {
+module hosting './modules/hosting.bicep' = {
   name: 'hosting'
   params: {
     nameSuffix: nameSuffix
@@ -19,7 +20,8 @@ module hosting 'modules/hosting.bicep' = {
   }
 }
 
-module database 'modules/database.bicep' = {
+
+module database './modules/database.bicep' = {
   name: 'database'
   params: {
     nameSuffix: nameSuffix
@@ -29,8 +31,8 @@ module database 'modules/database.bicep' = {
   }
 }
 
-module keyVault 'modules/keyvault.bicep' = {
-  name: 'keyVault'
+module keyvault './modules/keyvault.bicep' = {
+  name: 'keyvault'
   params: {
     nameSuffix: nameSuffix
     location: location
@@ -41,5 +43,5 @@ module keyVault 'modules/keyvault.bicep' = {
 output webAppUrl string = hosting.outputs.webAppUrl
 output sqlServerName string = database.outputs.sqlServerName
 output sqlDatabaseName string = database.outputs.sqlDatabaseName
-output keyVaultName string = keyVault.outputs.keyVaultName
+output keyVaultName string = keyvault.outputs.keyVaultName
 

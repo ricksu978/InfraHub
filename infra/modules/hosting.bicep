@@ -1,3 +1,4 @@
+
 // infra/modules/hosting.bicep
 
 param nameSuffix string
