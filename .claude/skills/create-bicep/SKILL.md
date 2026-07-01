@@ -19,6 +19,10 @@ Determine the Azure resources the user wants. If they already listed them, proce
 
 For anything not already in `infra.config.json`: ask which environments to target (staging only, or staging plus production) — this drives how many `.bicepparam` variants to generate — and ask for configuration that affects cost, security, or architecture (SKU/tier/size, identity, networking, backup/retention). If the user does not specify, use the lowest-cost practical option and state the assumptions after generating.
 
+## Creation intent
+
+Create the infrastructure from the user's requested resources and Azure/Bicep best practices. Do not mirror, copy, translate, or mechanically recreate the existing `infra/` folder structure or files. Existing infra may be inspected only for project context such as naming conventions, not as the source design for the generated implementation.
+
 ## Bicep practices
 
 - Drive project name, environment name, and location from root parameters in `main.bicep`; pass them into modules instead of hardcoding. Derive resource names from a shared naming pattern, keeping resource-specific rules in modules.
