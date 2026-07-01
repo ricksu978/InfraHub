@@ -3,7 +3,8 @@
 param nameSuffix string
 param location string
 
-var keyVaultName = 'kv-${nameSuffix}'
+// Key Vault names are globally unique + max 24 chars, so append a hash of the RG id.
+var keyVaultName = take('kv-${nameSuffix}-${uniqueString(resourceGroup().id)}', 24)
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
